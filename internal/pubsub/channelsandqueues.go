@@ -1,6 +1,7 @@
 package pubsub
 
 import (
+	"github.com/bootdotdev/learn-pub-sub-starter/internal/routing"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -22,6 +23,17 @@ func DeclareAndBind(
 	if err != nil {
 		return &amqp.Channel{}, amqp.Queue{}, err
 	}
+
+	kind := "direct"
+	if exchange == routing.ExchangePerilTopic {
+		kind = "topic"
+	}
+
+	err = newChannel.ExchangeDeclare(exchange, kind, true, false, false, false, nil)
+	if err != nil {
+		return &amqp.Channel{}, amqp.Queue{}, err
+	}
+
 	queue, err := newChannel.QueueDeclare(queueName, queueType == Durable, queueType == Transient, queueType == Transient, false, nil)
 	if err != nil {
 		return &amqp.Channel{}, amqp.Queue{}, err

@@ -3,9 +3,8 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
-	"os/signal"
 
+	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/routing"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -24,13 +23,39 @@ func main() {
 	if err != nil {
 		log.Fatalf("error creating server channel: %v", err)
 	}
-	err = pubsub.PublishJSON(serverChannel, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{IsPaused: true})
+	defer serverChannel.Close()
+
+	_, _, err = pubsub.DeclareAndBind(con, routing.ExchangePerilTopic, routing.GameLogSlug, fmt.Sprintf("%s.*", routing.GameLogSlug), pubsub.Durable)
 	if err != nil {
-		log.Fatalf("error publishing the message: %v", err)
+		log.Fatalf("error declaring or binding the queue: %v", err)
 	}
 
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt)
-	<-signalChan
-	fmt.Println("\nshutting down connection")
+	gamelogic.PrintServerHelp()
+
+	for {
+		input := gamelogic.GetInput()
+		if len(input) == 0 {
+			continue
+		}
+		switch input[0] {
+		case "pause":
+			fmt.Println("sending pause message")
+			err = pubsub.PublishJSON(serverChannel, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{IsPaused: true})
+			if err != nil {
+				log.Fatalf("error publishing the message: %v", err)
+			}
+		case "resume":
+			fmt.Println("sending resume message")
+			err = pubsub.PublishJSON(serverChannel, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{IsPaused: false})
+			if err != nil {
+				log.Fatalf("error publishing the message: %v", err)
+			}
+		case "quit":
+			fmt.Println("exiting...")
+			return
+		default:
+			fmt.Println("Unknown command. Please try a valid one.")
+		}
+
+	}
 }
