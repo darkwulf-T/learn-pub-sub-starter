@@ -19,18 +19,30 @@ func main() {
 	defer con.Close()
 	fmt.Println("successful connected to service")
 
+	newChannel, err := con.Channel()
+	if err != nil {
+		log.Fatalf("error opening channel: %v", err)
+	}
+	defer newChannel.Close()
+
 	username, err := gamelogic.ClientWelcome()
 	if err != nil {
 		log.Fatal(err)
 	}
-	queueName := fmt.Sprintf("%s.%s", routing.PauseKey, username)
-
-	_, _, err = pubsub.DeclareAndBind(con, routing.ExchangePerilDirect, queueName, routing.PauseKey, pubsub.Transient)
-	if err != nil {
-		log.Fatalf("error declaring or binding the queue: %v", err)
-	}
+	queueNamePause := fmt.Sprintf("%s.%s", routing.PauseKey, username)
+	queueNameMove := fmt.Sprintf("army_moves.%s", username)
 
 	gameState := gamelogic.NewGameState(username)
+
+	err = pubsub.SubscribeJSON(con, routing.ExchangePerilDirect, queueNamePause, routing.PauseKey, pubsub.Transient, handlerPause(gameState))
+	if err != nil {
+		log.Fatalf("error setting up subscriber: %v", err)
+	}
+
+	err = pubsub.SubscribeJSON(con, routing.ExchangePerilTopic, queueNameMove, "army_moves.*", pubsub.Transient, handlerMove(gameState))
+	if err != nil {
+		log.Fatalf("error setting up subscriber: %v", err)
+	}
 
 	for {
 		input := gamelogic.GetInput()
@@ -46,6 +58,11 @@ func main() {
 			}
 		case "move":
 			move, err := gameState.CommandMove(input)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			err = pubsub.PublishJSON(newChannel, routing.ExchangePerilTopic, queueNameMove, move)
 			if err != nil {
 				fmt.Println(err)
 				continue
