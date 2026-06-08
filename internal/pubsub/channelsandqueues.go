@@ -34,7 +34,7 @@ func DeclareAndBind(
 		return &amqp.Channel{}, amqp.Queue{}, err
 	}
 
-	queue, err := newChannel.QueueDeclare(queueName, queueType == Durable, queueType == Transient, queueType == Transient, false, nil)
+	queue, err := newChannel.QueueDeclare(queueName, queueType == Durable, queueType == Transient, queueType == Transient, false, amqp.Table{routing.Delete_Key: routing.ExchangePerilDelete})
 	if err != nil {
 		return &amqp.Channel{}, amqp.Queue{}, err
 	}
