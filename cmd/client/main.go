@@ -44,7 +44,7 @@ func main() {
 		log.Fatalf("error setting up subscriber: %v", err)
 	}
 
-	err = pubsub.SubscribeJSON(con, routing.ExchangePerilTopic, "war", fmt.Sprintf("%s.*", routing.WarRecognitionsPrefix), pubsub.Durable, handlerWar(gameState))
+	err = pubsub.SubscribeJSON(con, routing.ExchangePerilTopic, "war", fmt.Sprintf("%s.*", routing.WarRecognitionsPrefix), pubsub.Durable, handlerWar(gameState, newChannel))
 	if err != nil {
 		log.Fatalf("error setting up subscriber: %v", err)
 	}

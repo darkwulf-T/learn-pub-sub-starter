@@ -25,7 +25,7 @@ func main() {
 	}
 	defer serverChannel.Close()
 
-	_, _, err = pubsub.DeclareAndBind(con, routing.ExchangePerilTopic, routing.GameLogSlug, fmt.Sprintf("%s.*", routing.GameLogSlug), pubsub.Durable)
+	err = pubsub.SubscribeGob(con, routing.ExchangePerilTopic, routing.GameLogSlug, fmt.Sprintf("%s.*", routing.GameLogSlug), pubsub.Durable, handlerLogs())
 	if err != nil {
 		log.Fatalf("error declaring or binding the queue: %v", err)
 	}

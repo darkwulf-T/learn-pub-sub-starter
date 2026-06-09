@@ -1,28 +1,26 @@
 package pubsub
 
 import (
+	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/gob"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-type Acktype string
+func PublishGob[T any](ch *amqp.Channel, exchange, key string, val T) error {
+	var data bytes.Buffer
+	encoder := gob.NewEncoder(&data)
 
-const (
-	Ack         Acktype = "ack"
-	NackRequeue Acktype = "NackRequeue"
-	NackDiscard Acktype = "NackDiscard"
-)
-
-func PublishJSON[T any](ch *amqp.Channel, exchange, key string, val T) error {
-	jsonData, err := json.Marshal(val)
+	err := encoder.Encode(val)
 	if err != nil {
 		return err
 	}
+	serializedData := data.Bytes()
+
 	err = ch.PublishWithContext(context.Background(), exchange, key, false, false, amqp.Publishing{
-		ContentType: "application/json",
-		Body:        jsonData,
+		ContentType: "application/gob",
+		Body:        serializedData,
 	})
 	if err != nil {
 		return err
@@ -30,7 +28,7 @@ func PublishJSON[T any](ch *amqp.Channel, exchange, key string, val T) error {
 	return nil
 }
 
-func SubscribeJSON[T any](
+func SubscribeGob[T any](
 	conn *amqp.Connection,
 	exchange,
 	queueName,
@@ -38,6 +36,6 @@ func SubscribeJSON[T any](
 	queueType SimpleQueueType, // an enum to represent "durable" or "transient"
 	handler func(T) Acktype,
 ) error {
-	err := subscribe(conn, exchange, queueName, key, queueType, handler, jsonUnmarhsaller)
+	err := subscribe(conn, exchange, queueName, key, queueType, handler, gobUnmarshaller)
 	return err
 }
