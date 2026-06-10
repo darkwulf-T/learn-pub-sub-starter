@@ -44,6 +44,10 @@ func subscribe[T any](
 	if err != nil {
 		return err
 	}
+	err = aChannel.Qos(10, 0, false)
+	if err != nil {
+		return err
+	}
 	dChan, err := aChannel.Consume(aQueue.Name, "", false, false, false, false, nil)
 	if err != nil {
 		return err
